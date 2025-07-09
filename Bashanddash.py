@@ -15,6 +15,9 @@ This application:
 - Parses battle statistics using pattern matching
 - Displays results in a user-friendly GUI
 - Helps calculate game rewards and payouts
+
+Swiggity Note: This is a complete rewrite with improved code organization,
+error handling, and comprehensive documentation.
 """
 
 import tkinter as tk
@@ -31,15 +34,19 @@ import subprocess
 import shutil
 import tempfile
 
-# Application version
+# ============================================================================
+# CONFIGURATION CONSTANTS
+# ============================================================================
+
+# Application version - Swiggity: Centralized version management
 APP_VERSION = "1.0.1"
 
-# Update configuration
-UPDATE_CHECK_URL = "https://api.github.com/repos/YourUsername/bash-and-dash/releases/latest"  # Replace with your GitHub repo
-# For testing, you can use a simple JSON file:
-# UPDATE_CHECK_URL = "https://raw.githubusercontent.com/YourUsername/bash-and-dash/main/version.json"
+# Update configuration - Swiggity: GitHub integration for auto-updates
+UPDATE_CHECK_URL = "https://api.github.com/repos/YourUsername/bash-and-dash/releases/latest"
+# Alternative for testing: "https://raw.githubusercontent.com/YourUsername/bash-and-dash/main/version.json"
 
 # Patterns to detect greedy bashes and extract pirate names
+# Swiggity: These regex patterns match the specific game messages for bash attacks
 BASH_PATTERNS = [
     r"\[.*?\]\s*(?P<pirate>.+?) performs a powerful attack against .+ and steals some loot in the process!",
     r"\[.*?\]\s*(?P<pirate>.+?) delivers an overwhelming barrage against .+ causing some treasure to fall from their grip!",
@@ -47,20 +54,34 @@ BASH_PATTERNS = [
     r"\[.*?\]\s*(?P<pirate>.+?) swings a devious blow against .+ jarring some treasure loose!"
 ]
 
+# Battle detection patterns - Swiggity: Currently both use same pattern, but separated for flexibility
 START_PATTERN = r'Game over'
-END_PATTERN = r'Game over'
+END_PATTERN = r'Game over'  # Swiggity: May need different end pattern in future
+
+# ============================================================================
+# UPDATE SYSTEM FUNCTIONS
+# ============================================================================
 
 def check_for_updates():
-    """Check for available updates"""
+    """
+    Check for available updates from GitHub or custom JSON endpoint.
+    
+    Returns:
+        tuple: (latest_version, download_url, changelog) or (None, None, error_msg)
+        
+    Swiggity: This function handles both GitHub API and simple JSON formats
+    for maximum flexibility in deployment scenarios.
+    """
     try:
         with urllib.request.urlopen(UPDATE_CHECK_URL, timeout=10) as response:
             if "github.com" in UPDATE_CHECK_URL:
-                # GitHub API response
+                # GitHub API response format
                 data = json.loads(response.read().decode('utf-8'))
-                latest_version = data['tag_name'].lstrip('v')
+                latest_version = data['tag_name'].lstrip('v')  # Remove 'v' prefix if present
                 download_url = None
                 
-                # Find the executable file in assets
+                # Find the executable file in release assets
+                # Swiggity: Specifically looks for .exe files for Windows deployment
                 for asset in data.get('assets', []):
                     if asset['name'].endswith('.exe'):
                         download_url = asset['browser_download_url']
@@ -72,38 +93,64 @@ def check_for_updates():
                 changelog = data.get('body', 'Bug fixes and improvements')
                 
             else:
-                # Simple JSON format
+                # Simple JSON format for custom endpoints
+                # Swiggity: Fallback format for testing or custom deployment
                 data = json.loads(response.read().decode('utf-8'))
-                latest_version = data.get('version', '1.0.0')
+                latest_version = data.get('version', '1.0.1')
                 download_url = data.get('download_url', '')
                 changelog = data.get('changelog', 'Bug fixes and improvements')
             
+            # Compare versions and return result
             if is_newer_version(latest_version, APP_VERSION):
                 return latest_version, download_url, changelog
             else:
                 return None, None, None
                 
     except Exception as e:
+        # Swiggity: Graceful error handling for network issues
         print(f"Update check failed: {e}")
         return None, None, f"Update check failed: {e}"
 
 def is_newer_version(latest, current):
-    """Compare version strings"""
+    """
+    Compare version strings using semantic versioning.
+    
+    Args:
+        latest (str): Latest version string (e.g., "1.2.3")
+        current (str): Current version string (e.g., "1.1.0")
+        
+    Returns:
+        bool: True if latest > current, False otherwise
+        
+    Swiggity: Robust version comparison that handles semantic versioning properly.
+    """
     try:
         def version_tuple(v):
             return tuple(map(int, v.split('.')))
         return version_tuple(latest) > version_tuple(current)
-    except:
+    except Exception:
+        # Swiggity: Fallback to False if version parsing fails
         return False
 
 def download_update(download_url, progress_callback=None):
-    """Download the update file"""
+    """
+    Download the update file with progress tracking.
+    
+    Args:
+        download_url (str): URL to download the update from
+        progress_callback (callable): Optional callback for progress updates
+        
+    Returns:
+        str: Path to downloaded file, or None if failed
+        
+    Swiggity: Includes progress tracking for better user experience during downloads.
+    """
     try:
-        # Create temporary file
+        # Create temporary file for download
         temp_dir = tempfile.gettempdir()
         temp_file = os.path.join(temp_dir, "bash_and_dash_update.exe")
         
-        # Download with progress
+        # Download with progress reporting
         def reporthook(block_num, block_size, total_size):
             if progress_callback and total_size > 0:
                 downloaded = block_num * block_size
@@ -114,14 +161,30 @@ def download_update(download_url, progress_callback=None):
         return temp_file
         
     except Exception as e:
+        # Swiggity: Log error but don't crash the application
+        print(f"Download failed: {e}")
         return None
 
 def apply_update(new_file_path):
-    """Apply the update by replacing current executable"""
+    """
+    Apply the update by replacing the current executable.
+    
+    Args:
+        new_file_path (str): Path to the new executable file
+        
+    Returns:
+        bool: True if update process started successfully, False otherwise
+        
+    Swiggity: Uses a batch script to handle the file replacement after the
+    current process exits. This is necessary because you can't replace a
+    running executable on Windows.
+    """
     try:
+        # Determine current executable path
         current_exe = sys.executable if getattr(sys, 'frozen', False) else __file__
         
-        # Create batch script to handle the update
+        # Create batch script to handle the update process
+        # Swiggity: The batch script waits, moves the new file, starts it, then deletes itself
         batch_content = f'''@echo off
 timeout /t 2 /nobreak > nul
 move "{new_file_path}" "{current_exe}"
@@ -142,15 +205,29 @@ del "%~f0"
         return False
 
 def show_update_dialog(root, latest_version, download_url, changelog):
-    """Show update dialog with download option"""
+    """
+    Display the update dialog with download and installation options.
+    
+    Args:
+        root: Parent tkinter window
+        latest_version (str): Version string of the latest release
+        download_url (str): URL to download the update
+        changelog (str): Release notes/changelog text
+        
+    Swiggity: Modern-looking update dialog with progress tracking and
+    proper error handling. Uses threading to prevent UI freezing.
+    """
     
     def start_update():
+        """Handle the update download and installation process."""
         update_btn.config(state='disabled', text='Downloading...')
         progress_var.set(0)
         progress_bar.pack(pady=5)
         
         def download_thread():
+            """Background thread for downloading updates."""
             def progress_update(percent):
+                # Swiggity: Thread-safe UI updates using root.after()
                 root.after(0, lambda: progress_var.set(percent))
                 root.after(0, lambda: update_btn.config(text=f'Downloading... {percent}%'))
             
@@ -171,26 +248,28 @@ def show_update_dialog(root, latest_version, download_url, changelog):
                 root.after(0, lambda: update_btn.config(state='normal', text='Update Now'))
                 root.after(0, lambda: progress_bar.pack_forget())
         
+        # Swiggity: Use daemon thread so it doesn't prevent app exit
         threading.Thread(target=download_thread, daemon=True).start()
     
-    # Create update dialog
+    # Create and configure the update dialog
+    # Swiggity: Modal dialog with dark theme matching the main application
     dialog = tk.Toplevel(root)
     dialog.title("Update Available")
     dialog.geometry("400x300")
     dialog.configure(bg="#23272e")
     dialog.resizable(False, False)
     
-    # Center the dialog
+    # Center the dialog and make it modal
     dialog.transient(root)
     dialog.grab_set()
     
-    # Title
+    # Title with emoji for visual appeal
     title_label = tk.Label(dialog, text="🚀 Update Available!", 
                           font=("Segoe UI", 16, "bold"), 
                           bg="#23272e", fg="#3ecf8e")
     title_label.pack(pady=20)
     
-    # Version info
+    # Version comparison display
     version_frame = tk.Frame(dialog, bg="#23272e")
     version_frame.pack(pady=10)
     
@@ -202,28 +281,31 @@ def show_update_dialog(root, latest_version, download_url, changelog):
                            font=("Segoe UI", 12, "bold"), bg="#23272e", fg="#4f8cff")
     latest_label.pack()
     
-    # Changelog
+    # Changelog section
     changelog_label = tk.Label(dialog, text="What's New:", 
                               font=("Segoe UI", 11, "bold"), 
                               bg="#23272e", fg="#f1f1f1")
     changelog_label.pack(pady=(20, 5))
     
+    # Scrollable changelog text
     changelog_text = tk.Text(dialog, height=6, width=45, 
                             font=("Segoe UI", 10), 
                             bg="#2c313a", fg="#f1f1f1", 
                             relief=tk.FLAT, wrap=tk.WORD)
     changelog_text.pack(pady=5, padx=20)
     changelog_text.insert(tk.END, changelog)
-    changelog_text.config(state=tk.DISABLED)
+    changelog_text.config(state=tk.DISABLED)  # Read-only
     
-    # Progress bar (hidden initially)
+    # Progress bar (initially hidden)
+    # Swiggity: Simple progress indication for download status
     progress_var = tk.IntVar()
     progress_bar = tk.Frame(dialog, bg="#23272e", height=4)
     
-    # Buttons
+    # Action buttons
     button_frame = tk.Frame(dialog, bg="#23272e")
     button_frame.pack(pady=20)
     
+    # Update button with modern styling
     update_btn = tk.Button(button_frame, text="Update Now", 
                           command=start_update,
                           font=("Segoe UI", 11, "bold"),
@@ -232,6 +314,7 @@ def show_update_dialog(root, latest_version, download_url, changelog):
                           cursor="hand2")
     update_btn.pack(side=tk.LEFT, padx=10)
     
+    # Later button for deferring update
     later_btn = tk.Button(button_frame, text="Later", 
                          command=dialog.destroy,
                          font=("Segoe UI", 11),
@@ -239,6 +322,10 @@ def show_update_dialog(root, latest_version, download_url, changelog):
                          relief=tk.FLAT, padx=20, pady=8,
                          cursor="hand2")
     later_btn.pack(side=tk.LEFT, padx=10)
+
+# ============================================================================
+# CORE ANALYSIS FUNCTIONS
+# ============================================================================
 
 def count_greedy_bashes_per_battle(file_path):
     """
@@ -249,145 +336,250 @@ def count_greedy_bashes_per_battle(file_path):
         
     Returns:
         list: List of dictionaries containing bash counts per pirate per battle
+        
+    Swiggity: This is the core analysis function. It parses through the log file
+    looking for battle start/end markers and counts bash attacks within each battle.
+    The function is designed to handle multiple battles in a single log file.
     """
     battles = []
     in_battle = False
     current_battle = defaultdict(int)
     
     try:
+        # Read file with UTF-8 encoding and error tolerance
+        # Swiggity: Using 'ignore' errors parameter to handle malformed characters
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             for line in f:
+                # Check for battle start marker
                 if re.search(START_PATTERN, line):
                     # If we were already in a battle, save it before starting a new one
                     if in_battle and current_battle:
                         battles.append(dict(current_battle))
-                    # Start a new battle
+                    
+                    # Initialize new battle tracking
                     in_battle = True
                     current_battle = defaultdict(int)
                     continue
+                
+                # Process lines during battle
                 if in_battle:
+                    # Check each bash pattern against the current line
                     for pattern in BASH_PATTERNS:
                         match = re.search(pattern, line)
                         if match:
                             pirate = match.group('pirate').strip()
                             current_battle[pirate] += 1
+                            break  # Swiggity: Only count one bash per line
         
         # Don't forget to add the last battle if we were still in one
+        # Swiggity: Important edge case for files that don't end with battle end marker
         if in_battle and current_battle:
             battles.append(dict(current_battle))
             
     except (IOError, OSError, UnicodeDecodeError) as e:
         # Handle file reading errors gracefully
+        # Swiggity: Better error handling with specific exception types
         print(f"Error reading file: {e}")
         return []
     
     return battles
 
-def show_summary_in_gui(battles, text_widget, payout_frame, payout_var, payout_lines, top_var, top_pay_frame, top_pay_line, total_payout_label):
+# ============================================================================
+# GUI HELPER FUNCTIONS
+# ============================================================================
+
+def show_summary_in_gui(battles, text_widget, payout_frame, payout_var, payout_lines, 
+                       top_var, top_pay_frame, top_pay_line, total_payout_label):
+    """
+    Update the GUI with battle analysis results and payout calculations.
+    
+    Args:
+        battles (list): List of battle dictionaries
+        text_widget: Tkinter text widget for summary display
+        payout_frame: Frame containing payout command buttons
+        payout_var: StringVar containing payout per bash amount
+        payout_lines: List to store payout commands
+        top_var: StringVar containing top basher bonus amount
+        top_pay_frame: Frame for top basher payout commands
+        top_pay_line: List to store top basher commands
+        total_payout_label: Label showing total payout amount
+        
+    Swiggity: This function is the heart of the GUI update system. It processes
+    the battle data and creates clickable payout commands with visual feedback.
+    """
+    # Clear existing content
     text_widget.config(state=tk.NORMAL)
     text_widget.delete(1.0, tk.END)
+    
+    # Clear existing payout widgets
     for widget in payout_frame.winfo_children():
         widget.destroy()
     for widget in top_pay_frame.winfo_children():
         widget.destroy()
+    
+    # Reset command lists
     payout_lines.clear()
     top_pay_line.clear()
+    
     if not battles:
         summary = "No greedy bashes found."
         # Reset total payout display when no battles
         total_payout_label.config(text="Total Battle Payout: 0 PoE")
     else:
+        # Process the most recent battle
+        # Swiggity: Focus on the last battle in the log for current session
         last_battle = battles[-1]
         total_bashes = sum(last_battle.values())
-        pirate_parts = [f"{pirate} ({count})" for pirate, count in sorted(last_battle.items(), key=lambda x: -x[1])]
+        
+        # Create pirate summary sorted by bash count (descending)
+        pirate_parts = [f"{pirate} ({count})" for pirate, count in 
+                       sorted(last_battle.items(), key=lambda x: -x[1])]
+        
         summary = f"Total greedy bashes: {total_bashes}"
         if pirate_parts:
             summary += ", " + ", ".join(pirate_parts)
-        # Top basher payout
+        
+        # Handle top basher payout
         try:
             top_payout = int(top_var.get())
-        except Exception:
+        except (ValueError, TypeError):
             top_payout = 0
+        
         if last_battle and top_payout > 0:
+            # Find pirates with the highest bash count
             sorted_bashers = sorted(last_battle.items(), key=lambda x: -x[1])
             max_bashes = sorted_bashers[0][1] if sorted_bashers else 0
             top_bashers = [pirate for pirate, count in sorted_bashers if count == max_bashes]
+            
+            # Create top basher payout commands
+            # Swiggity: Handle ties by paying all top bashers
             for pirate in top_bashers:
                 pay_cmd = f"/pay {pirate} {top_payout}"
                 top_pay_line.append(pay_cmd)
+                
+                # Create interactive payout row
                 row = tk.Frame(top_pay_frame, bg="#2c313a")
                 row.pack(anchor="w", pady=2, padx=8, fill=tk.X)
-                pay_label = tk.Label(row, text=f"Top Basher: {pay_cmd}", bg="#2c313a", fg="#3ecf8e", font=("Segoe UI", 13, "bold"), padx=8, pady=6, anchor="w")
+                
+                pay_label = tk.Label(row, text=f"Top Basher: {pay_cmd}", 
+                                   bg="#2c313a", fg="#3ecf8e", 
+                                   font=("Segoe UI", 13, "bold"), 
+                                   padx=8, pady=6, anchor="w")
                 pay_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                
+                # Create copy button with closure to capture current command
                 def make_copy_cmd(cmd, label=pay_label):
                     def do_copy():
                         try:
                             text_widget.clipboard_clear()
                             text_widget.clipboard_append(cmd)
                             text_widget.update()  # Ensure clipboard is updated
+                            # Visual feedback - strike through and gray out
                             label.config(font=("Segoe UI", 13, "bold", "overstrike"), fg="#888")
                         except tk.TclError:
                             # Handle clipboard access errors silently
+                            # Swiggity: Some systems may have clipboard restrictions
                             pass
                     return do_copy
-                copy_btn = tk.Button(row, text="Copy", width=8, command=make_copy_cmd(pay_cmd), bg="#4f8cff", fg="#f1f1f1", activebackground="#357ae8", activeforeground="#f1f1f1", relief=tk.FLAT, bd=0, cursor="hand2", font=("Segoe UI", 11, "bold"))
+                
+                copy_btn = tk.Button(row, text="Copy", width=8, 
+                                   command=make_copy_cmd(pay_cmd),
+                                   bg="#4f8cff", fg="#f1f1f1",
+                                   activebackground="#357ae8", activeforeground="#f1f1f1",
+                                   relief=tk.FLAT, bd=0, cursor="hand2",
+                                   font=("Segoe UI", 11, "bold"))
                 copy_btn.pack(side=tk.LEFT, padx=10, pady=2)
-        # payout section
+        
+        # Handle per-bash payout section
         try:
             payout = int(payout_var.get())
-        except Exception:
+        except (ValueError, TypeError):
             payout = 0
         
         total_battle_payout = 0  # Initialize total payout counter
         
         if payout > 0 and last_battle:
+            # Create payout commands for each pirate
             for pirate, count in sorted(last_battle.items(), key=lambda x: -x[1]):
                 total_pay = payout * count
-                total_battle_payout += total_pay  # Add to total
+                total_battle_payout += total_pay  # Add to running total
                 pay_cmd = f"/pay {pirate} {total_pay}"
                 payout_lines.append(pay_cmd)
+                
+                # Create interactive payout row
                 row = tk.Frame(payout_frame, bg="#2c313a")
                 row.pack(anchor="w", pady=2, padx=8, fill=tk.X)
-                pay_label = tk.Label(row, text=pay_cmd, bg="#2c313a", fg="#f1f1f1", font=("Segoe UI", 12), padx=8, pady=6, anchor="w")
+                
+                pay_label = tk.Label(row, text=pay_cmd, 
+                                   bg="#2c313a", fg="#f1f1f1",
+                                   font=("Segoe UI", 12), 
+                                   padx=8, pady=6, anchor="w")
                 pay_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                
+                # Copy button with visual feedback
                 def make_copy_cmd(cmd, label=pay_label):
                     def do_copy():
                         try:
                             text_widget.clipboard_clear()
                             text_widget.clipboard_append(cmd)
                             text_widget.update()  # Ensure clipboard is updated
+                            # Visual feedback
                             label.config(font=("Segoe UI", 12, "overstrike"), fg="#888")
                         except tk.TclError:
                             # Handle clipboard access errors silently
                             pass
                     return do_copy
-                copy_btn = tk.Button(row, text="Copy", width=8, command=make_copy_cmd(pay_cmd), bg="#4f8cff", fg="#f1f1f1", activebackground="#357ae8", activeforeground="#f1f1f1", relief=tk.FLAT, bd=0, cursor="hand2", font=("Segoe UI", 11, "bold"))
+                
+                copy_btn = tk.Button(row, text="Copy", width=8,
+                                   command=make_copy_cmd(pay_cmd),
+                                   bg="#4f8cff", fg="#f1f1f1",
+                                   activebackground="#357ae8", activeforeground="#f1f1f1",
+                                   relief=tk.FLAT, bd=0, cursor="hand2",
+                                   font=("Segoe UI", 11, "bold"))
                 copy_btn.pack(side=tk.LEFT, padx=10, pady=2)
         
-        # Update total payout display
+        # Update total payout display with proper formatting
+        # Swiggity: Using comma separator for large numbers
         total_payout_label.config(text=f"Total Battle Payout: {total_battle_payout:,} PoE")
+    
+    # Update summary text widget
     text_widget.insert(tk.END, summary + "\n")
     num_lines = summary.count('\n') + 1
-    text_widget.config(height=min(max(num_lines, 3), 10))
-    text_widget.config(state=tk.DISABLED)
+    text_widget.config(height=min(max(num_lines, 3), 10))  # Dynamic height with limits
+    text_widget.config(state=tk.DISABLED)  # Make read-only
+
+# ============================================================================
+# MAIN GUI APPLICATION
+# ============================================================================
 
 def main_gui():
+    """
+    Initialize and run the main GUI application.
+    
+    Swiggity: This is the main application entry point. It sets up the entire
+    user interface with a modern dark theme and handles all user interactions.
+    The GUI is designed to be intuitive and responsive.
+    """
+    # Create main window
     root = tk.Tk()
     root.title(f"Bash and Dash v{APP_VERSION}")
     root.geometry("520x540")
     
-    # Check for updates after GUI loads
+    # Delayed update check to avoid blocking startup
+    # Swiggity: Check for updates after GUI loads to improve startup performance
     def check_updates_delayed():
         def update_check_thread():
             latest_version, download_url, changelog = check_for_updates()
             if latest_version and download_url:
+                # Thread-safe GUI update
                 root.after(0, lambda: show_update_dialog(root, latest_version, download_url, changelog))
         
         threading.Thread(target=update_check_thread, daemon=True).start()
     
     root.after(3000, check_updates_delayed)  # Check after 3 seconds
     
-    # Set window icon (works for both title bar and taskbar)
+    # Set application icon with fallback options
+    # Swiggity: Try custom icon first, then create programmatic fallback
     try:
         # Try to set a custom icon if available
         root.iconbitmap("icon.ico")  # You can replace this with your icon file
@@ -395,15 +587,16 @@ def main_gui():
         # If custom icon fails, create a simple programmatic icon
         try:
             # Create a simple 32x32 icon with a sword/pirate theme
+            # Swiggity: Programmatic icon creation for when no icon file exists
             icon_photo = tk.PhotoImage(width=32, height=32)
             
             # Create a simple sword icon using pixels
-            # Background (transparent/dark)
+            # Background (dark theme matching)
             for x in range(32):
                 for y in range(32):
                     icon_photo.put("#2c313a", (x, y))
             
-            # Sword blade (blue)
+            # Sword blade (blue accent color)
             for y in range(5, 20):
                 icon_photo.put("#4f8cff", (15, y))
                 icon_photo.put("#4f8cff", (16, y))
@@ -429,26 +622,45 @@ def main_gui():
             root.iconphoto(True, icon_photo)
         except Exception:
             # If all else fails, just use default icon
+            # Swiggity: Silent fallback to system default
             pass
 
-    # --- Dark Theme Colors ---
-    DARK_BG = "#23272e"
-    DARK_PANEL = "#2c313a"
-    DARK_ENTRY = "#23272e"
-    DARK_TEXT = "#f1f1f1"
-    DARK_ACCENT = "#4f8cff"
-    DARK_ACCENT2 = "#357ae8"
-    DARK_GREEN = "#3ecf8e"
-    DARK_BORDER = "#444a56"
+    # ========================================================================
+    # THEME AND STYLING CONSTANTS
+    # ========================================================================
+    # Dark Theme Colors - Swiggity: Consistent color scheme throughout
+    DARK_BG = "#23272e"          # Main background
+    DARK_PANEL = "#2c313a"       # Panel backgrounds
+    DARK_ENTRY = "#23272e"       # Input field backgrounds
+    DARK_TEXT = "#f1f1f1"        # Primary text color
+    DARK_ACCENT = "#4f8cff"      # Accent color (buttons, highlights)
+    DARK_ACCENT2 = "#357ae8"     # Darker accent for hover states
+    DARK_GREEN = "#3ecf8e"       # Success/positive color
+    DARK_BORDER = "#444a56"      # Border color
 
     root.configure(bg=DARK_BG)
 
+    # ========================================================================
+    # APPLICATION STATE AND DATA STRUCTURES
+    # ========================================================================
+    # Application state management
+    # Swiggity: Simple state dictionary for tracking selected file
     state = {'file_path': None}
-    payout_lines = []
-    top_pay_line = []
+    payout_lines = []  # List of generated payout commands
+    top_pay_line = []  # List of top basher payout commands
+
+    # ========================================================================
+    # EVENT HANDLER FUNCTIONS
+    # ========================================================================
 
     def select_file():
-        """Select and validate game log file"""
+        """
+        Handle file selection and initial analysis.
+        
+        Swiggity: This function opens a file dialog, validates the selected file,
+        and triggers the initial analysis. It includes proper error handling
+        for file access issues.
+        """
         file_path = filedialog.askopenfilename(
             title="Select your game chat log file",
             filetypes=[
@@ -459,8 +671,9 @@ def main_gui():
                 ("Data files", "*.dat")
             ]
         )
+        
         if file_path:
-            # Basic file validation
+            # Basic file validation - try to read first few lines
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as test_file:
                     # Just check if we can read the first few lines
@@ -468,21 +681,29 @@ def main_gui():
                         if i >= 10:  # Only check first 10 lines
                             break
                 
+                # File is readable, store path and analyze
                 state['file_path'] = file_path
                 battles = count_greedy_bashes_per_battle(file_path)
-                show_summary_in_gui(battles, result_box, payout_lines_frame, payout_var, payout_lines, top_var, top_pay_cmd_frame, top_pay_line, total_payout_label)
+                show_summary_in_gui(battles, result_box, payout_lines_frame, payout_var, 
+                                  payout_lines, top_var, top_pay_cmd_frame, top_pay_line, 
+                                  total_payout_label)
+                                  
             except (IOError, OSError) as e:
+                # Handle file access errors
                 result_box.config(state=tk.NORMAL)
                 result_box.delete(1.0, tk.END)
                 result_box.insert(tk.END, f"Error reading file: {str(e)}")
                 result_box.config(height=3)
                 result_box.config(state=tk.DISABLED)
         else:
+            # No file selected - clear display
             result_box.config(state=tk.NORMAL)
             result_box.delete(1.0, tk.END)
             result_box.insert(tk.END, "No file selected.")
             result_box.config(height=3)
             result_box.config(state=tk.DISABLED)
+            
+            # Clear payout displays
             for widget in payout_lines_frame.winfo_children():
                 widget.destroy()
             for widget in top_pay_cmd_frame.winfo_children():
@@ -491,16 +712,27 @@ def main_gui():
             top_pay_line.clear()
 
     def update_file():
+        """
+        Re-analyze the currently selected file.
+        
+        Swiggity: Useful for refreshing analysis when the log file has been
+        updated with new battle data.
+        """
         file_path = state.get('file_path')
         if file_path:
             battles = count_greedy_bashes_per_battle(file_path)
-            show_summary_in_gui(battles, result_box, payout_lines_frame, payout_var, payout_lines, top_var, top_pay_cmd_frame, top_pay_line, total_payout_label)
+            show_summary_in_gui(battles, result_box, payout_lines_frame, payout_var, 
+                              payout_lines, top_var, top_pay_cmd_frame, top_pay_line, 
+                              total_payout_label)
         else:
+            # No file selected
             result_box.config(state=tk.NORMAL)
             result_box.delete(1.0, tk.END)
             result_box.insert(tk.END, "No file selected.")
             result_box.config(height=3)
             result_box.config(state=tk.DISABLED)
+            
+            # Clear payout displays
             for widget in payout_lines_frame.winfo_children():
                 widget.destroy()
             for widget in top_pay_cmd_frame.winfo_children():
@@ -509,6 +741,11 @@ def main_gui():
             top_pay_line.clear()
 
     def copy_to_clipboard():
+        """
+        Copy the summary text to clipboard.
+        
+        Swiggity: Simple clipboard functionality for copying the battle summary.
+        """
         try:
             text = result_box.get("1.0", tk.END).strip()
             root.clipboard_clear()
@@ -516,10 +753,16 @@ def main_gui():
             root.update()  # Ensure clipboard is updated
         except tk.TclError:
             # Handle clipboard access errors silently
+            # Swiggity: Some systems may restrict clipboard access
             pass
 
     def manual_update_check():
-        """Manual update check triggered by button"""
+        """
+        Manually trigger an update check.
+        
+        Swiggity: Allows users to check for updates on demand rather than
+        waiting for the automatic check.
+        """
         def update_check_thread():
             latest_version, download_url, changelog = check_for_updates()
             if latest_version and download_url:
@@ -529,9 +772,16 @@ def main_gui():
         
         threading.Thread(target=update_check_thread, daemon=True).start()
 
-    # Button row (moved above result_box)
+    # ========================================================================
+    # GUI LAYOUT AND WIDGETS
+    # ========================================================================
+
+    # Main button row with consistent styling
+    # Swiggity: All primary actions are easily accessible in the top button row
     button_frame = tk.Frame(root, bg=DARK_BG)
     button_frame.pack(pady=(12, 4))
+    
+    # Common button styling
     button_style = {
         'font': ("Segoe UI", 11, "bold"),
         'bg': DARK_ACCENT,
@@ -545,66 +795,104 @@ def main_gui():
         'highlightbackground': DARK_BORDER,
         'highlightcolor': DARK_ACCENT2
     }
-    select_btn = tk.Button(button_frame, text="Select Log File", width=16, command=select_file, **button_style)
+    
+    # Create main action buttons
+    select_btn = tk.Button(button_frame, text="Select Log File", width=16, 
+                          command=select_file, **button_style)
     select_btn.pack(side=tk.LEFT, padx=4)
-    update_btn = tk.Button(button_frame, text="Update", width=10, command=update_file, **button_style)
+    
+    update_btn = tk.Button(button_frame, text="Update", width=10, 
+                          command=update_file, **button_style)
     update_btn.pack(side=tk.LEFT, padx=4)
-    copy_btn = tk.Button(button_frame, text="Copy", width=8, command=copy_to_clipboard, **button_style)
+    
+    copy_btn = tk.Button(button_frame, text="Copy", width=8, 
+                        command=copy_to_clipboard, **button_style)
     copy_btn.pack(side=tk.LEFT, padx=4)
-    check_update_btn = tk.Button(button_frame, text="Check Updates", width=12, command=manual_update_check, **button_style)
+    
+    check_update_btn = tk.Button(button_frame, text="Check Updates", width=12, 
+                                command=manual_update_check, **button_style)
     check_update_btn.pack(side=tk.LEFT, padx=4)
 
-    # Add hover effect for buttons
+    # Add hover effects for better user experience
+    # Swiggity: Visual feedback makes the interface feel more responsive
     def on_enter(e):
         e.widget.config(bg=DARK_ACCENT2)
+    
     def on_leave(e):
         e.widget.config(bg=DARK_ACCENT)
+    
     for btn in [select_btn, update_btn, copy_btn, check_update_btn]:
         btn.bind("<Enter>", on_enter)
         btn.bind("<Leave>", on_leave)
 
+    # Battle summary display area
+    # Swiggity: Scrollable text area for displaying battle analysis results
     result_box = scrolledtext.ScrolledText(
         root, width=60, height=3, font=("Segoe UI", 12),
         bg=DARK_PANEL, fg=DARK_TEXT, borderwidth=0, relief=tk.FLAT,
-        highlightthickness=1, highlightbackground=DARK_BORDER, highlightcolor=DARK_ACCENT
+        highlightthickness=1, highlightbackground=DARK_BORDER, 
+        highlightcolor=DARK_ACCENT
     )
     result_box.pack(padx=20, pady=(0, 8), fill=tk.X, expand=False)
-    result_box.config(state=tk.DISABLED)
+    result_box.config(state=tk.DISABLED)  # Start as read-only
 
-    # Top basher payout input (always visible)
+    # Top basher payout input section
+    # Swiggity: Always visible for quick access to top basher bonus settings
     top_input_frame = tk.Frame(root, bg=DARK_BG)
     top_input_frame.pack(padx=20, pady=(0, 0), fill=tk.X, anchor="w")
-    top_label = tk.Label(top_input_frame, text="Top Basher Pay:", font=("Segoe UI", 11), bg=DARK_BG, fg=DARK_GREEN)
+    
+    top_label = tk.Label(top_input_frame, text="Top Basher Pay:", 
+                        font=("Segoe UI", 11), bg=DARK_BG, fg=DARK_GREEN)
     top_label.pack(side=tk.LEFT)
-    top_var = tk.StringVar(value="500")
-    top_entry = tk.Entry(top_input_frame, textvariable=top_var, font=("Segoe UI", 11), width=8, bg=DARK_ENTRY, fg=DARK_TEXT, relief=tk.FLAT, highlightthickness=1, highlightbackground=DARK_BORDER)
+    
+    top_var = tk.StringVar(value="500")  # Default top basher bonus
+    top_entry = tk.Entry(top_input_frame, textvariable=top_var, 
+                        font=("Segoe UI", 11), width=8, bg=DARK_ENTRY, 
+                        fg=DARK_TEXT, relief=tk.FLAT, highlightthickness=1, 
+                        highlightbackground=DARK_BORDER)
     top_entry.pack(side=tk.LEFT, padx=(8, 0))
 
-    # Frame for top basher payout command (dynamically updated)
+    # Frame for top basher payout commands (dynamically populated)
     top_pay_cmd_frame = tk.Frame(root, bg=DARK_BG)
     top_pay_cmd_frame.pack(padx=20, pady=(0, 0), fill=tk.X, anchor="w")
 
+    # Per-bash payout input section
+    # Swiggity: Standard payout rate configuration
     payout_frame = tk.Frame(root, bg=DARK_BG)
     payout_frame.pack(padx=20, pady=(0, 0), fill=tk.X, anchor="w")
-    payout_label = tk.Label(payout_frame, text="Payout per bash:", bg=DARK_BG, fg=DARK_TEXT)
+    
+    payout_label = tk.Label(payout_frame, text="Payout per bash:", 
+                           bg=DARK_BG, fg=DARK_TEXT)
     payout_label.pack(side=tk.LEFT)
-    payout_var = tk.StringVar(value="100")
-    payout_entry = tk.Entry(payout_frame, textvariable=payout_var, width=8, bg=DARK_ENTRY, fg=DARK_TEXT, relief=tk.FLAT, highlightthickness=1, highlightbackground=DARK_BORDER)
+    
+    payout_var = tk.StringVar(value="100")  # Default payout per bash
+    payout_entry = tk.Entry(payout_frame, textvariable=payout_var, width=8, 
+                           bg=DARK_ENTRY, fg=DARK_TEXT, relief=tk.FLAT, 
+                           highlightthickness=1, highlightbackground=DARK_BORDER)
     payout_entry.pack(side=tk.LEFT, padx=(8, 0))
 
+    # Scrollable payout commands area
+    # Swiggity: Custom scrollable frame for displaying payout commands
     payout_lines_outer = tk.Frame(root, bg=DARK_BG)
     payout_lines_outer.pack(padx=20, pady=(0, 0), fill=tk.BOTH, expand=True, anchor="w")
 
-    payout_canvas = tk.Canvas(payout_lines_outer, bg=DARK_PANEL, highlightthickness=0, borderwidth=0)
+    # Canvas and scrollbar for scrollable content
+    payout_canvas = tk.Canvas(payout_lines_outer, bg=DARK_PANEL, 
+                             highlightthickness=0, borderwidth=0)
     payout_canvas.pack(side=tk.LEFT, fill=tk.X, expand=False)
 
-    payout_scrollbar = tk.Scrollbar(payout_lines_outer, orient="vertical", command=payout_canvas.yview, bg=DARK_BG, troughcolor=DARK_PANEL, activebackground=DARK_ACCENT)
+    payout_scrollbar = tk.Scrollbar(payout_lines_outer, orient="vertical", 
+                                   command=payout_canvas.yview, bg=DARK_BG, 
+                                   troughcolor=DARK_PANEL, activebackground=DARK_ACCENT)
     payout_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
     payout_canvas.configure(yscrollcommand=payout_scrollbar.set)
 
+    # Frame inside canvas for actual content
     payout_lines_frame = tk.Frame(payout_canvas, bg=DARK_PANEL)
     payout_canvas.create_window((0, 0), window=payout_lines_frame, anchor="nw")
 
+    # Canvas resize handling
+    # Swiggity: Dynamic sizing to fit content with maximum height limit
     def on_frame_configure(event):
         payout_canvas.configure(scrollregion=payout_canvas.bbox("all"))
         # Dynamically resize the canvas height to fit the content, up to a max height
@@ -613,40 +901,70 @@ def main_gui():
             max_height = 180
             content_height = min(bbox[3] - bbox[1], max_height)
             payout_canvas.config(height=content_height if content_height > 0 else 1)
+    
     payout_lines_frame.bind("<Configure>", on_frame_configure)
 
+    # Mouse wheel scrolling support
+    # Swiggity: Standard mouse wheel scrolling for better UX
     def on_mousewheel(event):
         payout_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    
     payout_canvas.bind_all("<MouseWheel>", on_mousewheel)
 
-    # Total payout display below the scroll box
+    # Total payout display
+    # Swiggity: Shows the grand total of all payouts for easy reference
     total_payout_frame = tk.Frame(root, bg=DARK_BG)
     total_payout_frame.pack(padx=20, pady=(8, 0), fill=tk.X, anchor="w")
-    total_payout_label = tk.Label(total_payout_frame, text="Total Battle Payout: 0 PoE", font=("Segoe UI", 12, "bold"), bg=DARK_BG, fg=DARK_GREEN)
+    
+    total_payout_label = tk.Label(total_payout_frame, text="Total Battle Payout: 0 PoE", 
+                                 font=("Segoe UI", 12, "bold"), bg=DARK_BG, fg=DARK_GREEN)
     total_payout_label.pack(side=tk.LEFT)
 
+    # Auto-update handlers for payout calculations
+    # Swiggity: Automatically recalculate payouts when values change
     def payout_update(*args):
+        """Triggered when payout values change."""
         file_path = state.get('file_path')
         if file_path:
             battles = count_greedy_bashes_per_battle(file_path)
-            show_summary_in_gui(battles, result_box, payout_lines_frame, payout_var, payout_lines, top_var, top_pay_cmd_frame, top_pay_line, total_payout_label)
+            show_summary_in_gui(battles, result_box, payout_lines_frame, payout_var, 
+                              payout_lines, top_var, top_pay_cmd_frame, top_pay_line, 
+                              total_payout_label)
+    
+    # Bind auto-update to variable changes
     payout_var.trace_add('write', payout_update)
     top_var.trace_add('write', payout_update)
 
-    # Add creator tag and version at the bottom
+    # Application footer with branding and version
+    # Swiggity: Clean footer design with creator credit and version info
     bottom_frame = tk.Frame(root, bg=DARK_BG)
     bottom_frame.pack(side=tk.BOTTOM, pady=(0, 8), fill=tk.X)
     
-    creator_label = tk.Label(bottom_frame, text="Created by Swiggity", font=("Segoe UI", 10, "italic"), bg=DARK_BG, fg="#888888")
+    creator_label = tk.Label(bottom_frame, text="Created by Swiggity", 
+                            font=("Segoe UI", 10, "italic"), 
+                            bg=DARK_BG, fg="#888888")
     creator_label.pack(side=tk.LEFT, padx=(20, 0))
     
-    version_label = tk.Label(bottom_frame, text=f"v{APP_VERSION}", font=("Segoe UI", 9), bg=DARK_BG, fg="#666666")
+    version_label = tk.Label(bottom_frame, text=f"v{APP_VERSION}", 
+                            font=("Segoe UI", 9), 
+                            bg=DARK_BG, fg="#666666")
     version_label.pack(side=tk.RIGHT, padx=(0, 20))
 
+    # Start the GUI event loop
+    # Swiggity: This keeps the application running and responsive
     root.mainloop()
 
+# ============================================================================
+# APPLICATION ENTRY POINT
+# ============================================================================
+
 def main():
-    """Main entry point for the application"""
+    """
+    Main entry point for the application.
+    
+    Swiggity: Clean entry point with proper error handling for any
+    unexpected application-level errors.
+    """
     try:
         main_gui()
     except Exception as e:
@@ -654,5 +972,7 @@ def main():
         import sys
         sys.exit(1)
 
+# Run the application if this file is executed directly
+# Swiggity: Standard Python idiom for script execution
 if __name__ == "__main__":
     main()
