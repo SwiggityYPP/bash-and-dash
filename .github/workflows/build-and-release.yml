@@ -1,0 +1,68 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.1, v2.0.0, etc.
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --windowed --name "Bash-and-Dash" Bashanddash.py
+        
+    - name: Get version from tag
+      id: get_version
+      run: |
+        $version = "${{ github.ref_name }}" -replace '^v', ''
+        echo "version=$version" >> $env:GITHUB_OUTPUT
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: "Bash and Dash ${{ steps.get_version.outputs.version }}"
+        body: |
+          ## What's New in ${{ steps.get_version.outputs.version }}
+          
+          ### Features
+          - Bug fixes and improvements
+          - Performance enhancements
+          
+          ### Download
+          Download the executable below and run it directly - no installation required!
+          
+          ### Auto-Update
+          If you have a previous version, the app will automatically notify you of this update.
+        draft: false
+        prerelease: false
+        
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/Bash-and-Dash.exe
+        asset_name: Bash-and-Dash.exe
+        asset_content_type: application/octet-stream

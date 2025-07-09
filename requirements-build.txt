@@ -1,0 +1,6 @@
+# Requirements for building the executable
+pyinstaller>=5.13.0
+
+# Optional: For future features
+# requests>=2.31.0  # If you want to use requests instead of urllib
+# packaging>=23.0   # For better version comparison
