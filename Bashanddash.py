@@ -32,7 +32,7 @@ import shutil
 import tempfile
 
 # Application version
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 
 # Update configuration
 UPDATE_CHECK_URL = "https://api.github.com/repos/YourUsername/bash-and-dash/releases/latest"  # Replace with your GitHub repo
