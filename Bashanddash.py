@@ -6,7 +6,7 @@ Bash and Dash Game Log Analyzer
 A simple game log analyzer for counting bash attacks and calculating payouts.
 
 Author: Swiggity
-Version: 1.0.1
+Version: 1.0.2
 """
 
 import tkinter as tk
@@ -16,7 +16,7 @@ from collections import defaultdict
 import os
 
 # Configuration
-APP_VERSION = "1.0.1"
+APP_VERSION = "1.0.2"
 
 # Patterns to detect greedy bashes and extract pirate names
 BASH_PATTERNS = [
@@ -133,7 +133,7 @@ def show_summary_in_gui(battles, text_widget, payout_frame, payout_var, top_var,
                 pay_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
                 
                 copy_btn = tk.Button(row, text="Copy", width=8,
-                                   command=lambda cmd=pay_cmd: copy_to_clipboard(cmd, root),
+                                   command=lambda cmd=pay_cmd, lbl=pay_label: copy_and_strikethrough(cmd, lbl, root),
                                    bg="#4f8cff", fg="#f1f1f1",
                                    font=("Arial", 10, "bold"))
                 copy_btn.pack(side=tk.LEFT, padx=5)
@@ -155,7 +155,7 @@ def show_summary_in_gui(battles, text_widget, payout_frame, payout_var, top_var,
                 pay_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
                 
                 copy_btn = tk.Button(row, text="Copy", width=8,
-                                   command=lambda cmd=pay_cmd: copy_to_clipboard(cmd, root),
+                                   command=lambda cmd=pay_cmd, lbl=pay_label: copy_and_strikethrough(cmd, lbl, root),
                                    bg="#4f8cff", fg="#f1f1f1",
                                    font=("Arial", 10, "bold"))
                 copy_btn.pack(side=tk.LEFT, padx=5)
@@ -172,6 +172,34 @@ def copy_to_clipboard(text, root):
         root.clipboard_clear()
         root.clipboard_append(text)
         root.update()
+    except:
+        pass
+
+def copy_and_strikethrough(text, label, root):
+    """Copy text to clipboard and add strikethrough effect to label."""
+    try:
+        root.clipboard_clear()
+        root.clipboard_append(text)
+        root.update()
+        
+        # Add strikethrough by changing font and color
+        current_font = label.cget("font")
+        if isinstance(current_font, str):
+            # Parse font string to get family and size
+            parts = current_font.split()
+            if len(parts) >= 2:
+                family = parts[0]
+                size = parts[1]
+                label.config(font=(family, size, "overstrike"), fg="#666666")
+            else:
+                label.config(font=("Arial", 11, "overstrike"), fg="#666666")
+        elif isinstance(current_font, tuple):
+            # Font is already a tuple
+            family, size = current_font[0], current_font[1]
+            label.config(font=(family, size, "overstrike"), fg="#666666")
+        else:
+            # Fallback
+            label.config(font=("Arial", 11, "overstrike"), fg="#666666")
     except:
         pass
 
@@ -276,8 +304,9 @@ def main_gui():
     
     top_var = tk.StringVar(value="500")
     top_entry = tk.Entry(top_input_frame, textvariable=top_var, 
-                        font=("Arial", 11), width=8, bg="#23272e", 
-                        fg="#f1f1f1", relief=tk.FLAT)
+                        font=("Arial", 11), width=8, bg="#3a3f4a", 
+                        fg="#f1f1f1", relief=tk.SOLID, bd=1, 
+                        insertbackground="#f1f1f1", selectbackground="#4f8cff")
     top_entry.pack(side=tk.LEFT, padx=(8, 0))
     
     payout_input_frame = tk.Frame(root, bg="#23272e")
@@ -289,7 +318,8 @@ def main_gui():
     
     payout_var = tk.StringVar(value="100")
     payout_entry = tk.Entry(payout_input_frame, textvariable=payout_var, width=8, 
-                           bg="#23272e", fg="#f1f1f1", relief=tk.FLAT, 
+                           bg="#3a3f4a", fg="#f1f1f1", relief=tk.SOLID, bd=1, 
+                           insertbackground="#f1f1f1", selectbackground="#4f8cff",
                            font=("Arial", 11))
     payout_entry.pack(side=tk.LEFT, padx=(8, 0))
     
