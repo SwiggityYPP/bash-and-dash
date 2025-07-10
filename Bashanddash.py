@@ -6,7 +6,7 @@ Bash and Dash Game Log Analyzer
 A simple game log analyzer for counting bash attacks and calculating payouts.
 
 Author: Swiggity
-Version: 1.0.2
+Version: 1.0.3
 """
 
 import tkinter as tk
@@ -14,9 +14,13 @@ from tkinter import filedialog, scrolledtext, messagebox
 import re
 from collections import defaultdict
 import os
+import urllib.request
+import json
+import webbrowser
+import threading
 
 # Configuration
-APP_VERSION = "1.0.2"
+APP_VERSION = "1.0.3"
 
 # Patterns to detect greedy bashes and extract pirate names
 BASH_PATTERNS = [
@@ -203,6 +207,52 @@ def copy_and_strikethrough(text, label, root):
     except:
         pass
 
+def check_for_updates():
+    """Check for updates from GitHub releases."""
+    try:
+        url = "https://api.github.com/repos/SwiggityYPP/bash-and-dash/releases/latest"
+        with urllib.request.urlopen(url, timeout=5) as response:
+            data = json.loads(response.read().decode())
+            latest_version = data['tag_name'].lstrip('v')
+            download_url = data['html_url']
+            
+            # Compare versions
+            if latest_version != APP_VERSION:
+                return latest_version, download_url
+    except:
+        pass
+    return None, None
+
+def show_update_dialog(latest_version, download_url, root):
+    """Show update notification dialog."""
+    result = messagebox.askyesno(
+        "Update Available",
+        f"A new version (v{latest_version}) is available!\n"
+        f"Current version: v{APP_VERSION}\n\n"
+        f"Would you like to download the update?",
+        icon="info"
+    )
+    
+    if result:
+        try:
+            webbrowser.open(download_url)
+        except:
+            messagebox.showinfo(
+                "Update",
+                f"Please visit: {download_url}\n\nTo download the latest version."
+            )
+
+def check_updates_background(root):
+    """Check for updates in background thread."""
+    def check():
+        latest_version, download_url = check_for_updates()
+        if latest_version:
+            # Schedule the dialog to run in the main thread
+            root.after(0, lambda: show_update_dialog(latest_version, download_url, root))
+    
+    thread = threading.Thread(target=check, daemon=True)
+    thread.start()
+
 def main_gui():
     """Initialize and run the main GUI application."""
     root = tk.Tk()
@@ -364,6 +414,9 @@ def main_gui():
     # Auto-update handlers
     payout_var.trace_add('write', payout_update)
     top_var.trace_add('write', payout_update)
+    
+    # Check for updates on startup (in background)
+    check_updates_background(root)
     
     root.mainloop()
 
