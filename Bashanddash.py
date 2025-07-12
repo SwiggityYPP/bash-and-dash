@@ -20,7 +20,7 @@ import webbrowser
 import threading
 
 # Configuration
-APP_VERSION = "1.0.3"
+APP_VERSION = "1.0.4"
 
 # Patterns to detect greedy bashes and extract pirate names
 BASH_PATTERNS = [
@@ -92,6 +92,20 @@ def show_summary_in_gui(battles, text_widget, payout_frame, payout_var, top_var,
     for widget in payout_frame.winfo_children():
         widget.destroy()
     
+    # Helper function to bind mousewheel to new widgets
+    def bind_mousewheel_to_new_widget(widget):
+        def on_mousewheel(event):
+            # Find the canvas by traversing up the widget hierarchy
+            canvas = widget
+            while canvas and not isinstance(canvas, tk.Canvas):
+                canvas = canvas.master
+            if canvas and hasattr(canvas, 'yview_scroll'):
+                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        widget.bind("<MouseWheel>", on_mousewheel)
+        for child in widget.winfo_children():
+            bind_mousewheel_to_new_widget(child)
+    
     if not battles:
         summary = "No greedy bashes found."
         total_label.config(text="Total Battle Payout: 0 PoE")
@@ -126,21 +140,26 @@ def show_summary_in_gui(battles, text_widget, payout_frame, payout_var, top_var,
             
             for pirate in top_bashers:
                 pay_cmd = f"/pay {pirate} {top_payout}"
+                total_battle_payout += top_payout  # Add top basher payout to total
                 
-                row = tk.Frame(payout_frame, bg="#2c313a")
-                row.pack(anchor="w", pady=2, padx=8, fill=tk.X)
+                row = tk.Frame(payout_frame, bg="#2f3136")
+                row.pack(anchor="w", pady=3, padx=12, fill=tk.X)
                 
-                pay_label = tk.Label(row, text=f"Top Basher: {pay_cmd}", 
-                                   bg="#2c313a", fg="#3ecf8e", 
-                                   font=("Arial", 12, "bold"), 
-                                   padx=8, pady=4, anchor="w")
+                pay_label = tk.Label(row, text=f"🏆 {pay_cmd}", 
+                                   bg="#2f3136", fg="#00d4aa", 
+                                   font=("Consolas", 11, "bold"), 
+                                   padx=8, pady=6, anchor="w")
                 pay_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
                 
-                copy_btn = tk.Button(row, text="Copy", width=8,
+                copy_btn = tk.Button(row, text="📋", width=3,
                                    command=lambda cmd=pay_cmd, lbl=pay_label: copy_and_strikethrough(cmd, lbl, root),
-                                   bg="#4f8cff", fg="#f1f1f1",
-                                   font=("Arial", 10, "bold"))
-                copy_btn.pack(side=tk.LEFT, padx=5)
+                                   bg="#5865f2", fg="#ffffff",
+                                   font=("Segoe UI", 10, "bold"),
+                                   relief=tk.FLAT, bd=0, cursor="hand2")
+                copy_btn.pack(side=tk.RIGHT, padx=8)
+                
+                # Bind mouse wheel to the new row and its children
+                bind_mousewheel_to_new_widget(row)
         
         # Per-bash payouts
         if payout > 0 and last_battle:
@@ -149,20 +168,24 @@ def show_summary_in_gui(battles, text_widget, payout_frame, payout_var, top_var,
                 total_battle_payout += total_pay
                 pay_cmd = f"/pay {pirate} {total_pay}"
                 
-                row = tk.Frame(payout_frame, bg="#2c313a")
-                row.pack(anchor="w", pady=1, padx=8, fill=tk.X)
+                row = tk.Frame(payout_frame, bg="#2f3136")
+                row.pack(anchor="w", pady=2, padx=12, fill=tk.X)
                 
-                pay_label = tk.Label(row, text=pay_cmd, 
-                                   bg="#2c313a", fg="#f1f1f1",
-                                   font=("Arial", 11), 
-                                   padx=8, pady=2, anchor="w")
+                pay_label = tk.Label(row, text=f"⚔️ {pay_cmd}", 
+                                   bg="#2f3136", fg="#dcddde",
+                                   font=("Consolas", 10), 
+                                   padx=8, pady=4, anchor="w")
                 pay_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
                 
-                copy_btn = tk.Button(row, text="Copy", width=8,
+                copy_btn = tk.Button(row, text="📋", width=3,
                                    command=lambda cmd=pay_cmd, lbl=pay_label: copy_and_strikethrough(cmd, lbl, root),
-                                   bg="#4f8cff", fg="#f1f1f1",
-                                   font=("Arial", 10, "bold"))
-                copy_btn.pack(side=tk.LEFT, padx=5)
+                                   bg="#5865f2", fg="#ffffff",
+                                   font=("Segoe UI", 9, "bold"),
+                                   relief=tk.FLAT, bd=0, cursor="hand2")
+                copy_btn.pack(side=tk.RIGHT, padx=8)
+                
+                # Bind mouse wheel to the new row and its children
+                bind_mousewheel_to_new_widget(row)
         
         total_label.config(text=f"Total Battle Payout: {total_battle_payout:,} PoE")
     
@@ -257,8 +280,9 @@ def main_gui():
     """Initialize and run the main GUI application."""
     root = tk.Tk()
     root.title(f"Bash and Dash v{APP_VERSION}")
-    root.geometry("520x500")
-    root.configure(bg="#23272e")
+    root.geometry("550x700")
+    root.configure(bg="#1e2124")
+    root.resizable(True, True)
     
     # Application state
     state = {'file_path': None}
@@ -313,103 +337,176 @@ def main_gui():
                 pass
     
     # Main buttons
-    button_frame = tk.Frame(root, bg="#23272e")
-    button_frame.pack(pady=12)
+    button_frame = tk.Frame(root, bg="#1e2124")
+    button_frame.pack(pady=15)
     
     button_style = {
-        'font': ("Arial", 11, "bold"),
-        'bg': "#4f8cff",
-        'fg': "#f1f1f1",
+        'font': ("Segoe UI", 10, "bold"),
+        'bg': "#5865f2",
+        'fg': "#ffffff",
         'relief': tk.FLAT,
-        'cursor': "hand2"
+        'cursor': "hand2",
+        'bd': 0,
+        'padx': 12,
+        'pady': 8
     }
     
-    select_btn = tk.Button(button_frame, text="Select Log File", width=16, 
+    select_btn = tk.Button(button_frame, text="📁 Select Log File", width=18, 
                           command=select_file, **button_style)
-    select_btn.pack(side=tk.LEFT, padx=4)
+    select_btn.pack(side=tk.LEFT, padx=6)
     
-    update_btn = tk.Button(button_frame, text="Update", width=10, 
+    update_btn = tk.Button(button_frame, text="🔄 Update", width=12, 
                           command=update_file, **button_style)
-    update_btn.pack(side=tk.LEFT, padx=4)
+    update_btn.pack(side=tk.LEFT, padx=6)
     
-    copy_btn = tk.Button(button_frame, text="Copy", width=8, 
+    copy_btn = tk.Button(button_frame, text="📋 Copy", width=10, 
                         command=copy_summary, **button_style)
-    copy_btn.pack(side=tk.LEFT, padx=4)
+    copy_btn.pack(side=tk.LEFT, padx=6)
     
     # Battle summary
+    summary_frame = tk.Frame(root, bg="#1e2124")
+    summary_frame.pack(padx=25, pady=(0, 15), fill=tk.X)
+    
+    summary_label = tk.Label(summary_frame, text="📊 Battle Summary", 
+                            font=("Segoe UI", 11, "bold"), 
+                            bg="#1e2124", fg="#ffffff")
+    summary_label.pack(anchor="w", pady=(0, 5))
+    
     result_box = scrolledtext.ScrolledText(
-        root, width=60, height=3, font=("Arial", 12),
-        bg="#2c313a", fg="#f1f1f1", borderwidth=0, relief=tk.FLAT
+        summary_frame, width=60, height=3, font=("Consolas", 11),
+        bg="#2f3136", fg="#dcddde", borderwidth=1, relief=tk.SOLID,
+        wrap=tk.WORD, insertbackground="#ffffff"
     )
-    result_box.pack(padx=20, pady=(0, 8), fill=tk.X)
+    result_box.pack(fill=tk.X)
     result_box.config(state=tk.DISABLED)
     
     # Payout inputs
-    top_input_frame = tk.Frame(root, bg="#23272e")
-    top_input_frame.pack(padx=20, pady=(0, 0), fill=tk.X, anchor="w")
+    input_container = tk.Frame(root, bg="#1e2124")
+    input_container.pack(padx=25, pady=(0, 15), fill=tk.X)
     
-    top_label = tk.Label(top_input_frame, text="Top Basher Pay:", 
-                        font=("Arial", 11), bg="#23272e", fg="#3ecf8e")
-    top_label.pack(side=tk.LEFT)
+    # Input section label
+    input_label = tk.Label(input_container, text="💰 Payout Settings", 
+                          font=("Segoe UI", 11, "bold"), 
+                          bg="#1e2124", fg="#ffffff")
+    input_label.pack(anchor="w", pady=(0, 8))
+    
+    # Input fields frame
+    inputs_frame = tk.Frame(input_container, bg="#1e2124")
+    inputs_frame.pack(fill=tk.X)
+    
+    # Top basher input
+    top_input_frame = tk.Frame(inputs_frame, bg="#1e2124")
+    top_input_frame.pack(side=tk.LEFT, padx=(0, 20))
+    
+    top_label = tk.Label(top_input_frame, text="🏆 Top Basher Pay:", 
+                        font=("Segoe UI", 10), bg="#1e2124", fg="#00d4aa")
+    top_label.pack(anchor="w")
     
     top_var = tk.StringVar(value="500")
     top_entry = tk.Entry(top_input_frame, textvariable=top_var, 
-                        font=("Arial", 11), width=8, bg="#3a3f4a", 
-                        fg="#f1f1f1", relief=tk.SOLID, bd=1, 
-                        insertbackground="#f1f1f1", selectbackground="#4f8cff")
-    top_entry.pack(side=tk.LEFT, padx=(8, 0))
+                        font=("Segoe UI", 11), width=10, bg="#40444b", 
+                        fg="#ffffff", relief=tk.FLAT, bd=0,
+                        insertbackground="#ffffff", selectbackground="#5865f2")
+    top_entry.pack(pady=(5, 0))
     
-    payout_input_frame = tk.Frame(root, bg="#23272e")
-    payout_input_frame.pack(padx=20, pady=(0, 0), fill=tk.X, anchor="w")
+    # Per bash input
+    payout_input_frame = tk.Frame(inputs_frame, bg="#1e2124")
+    payout_input_frame.pack(side=tk.LEFT)
     
-    payout_label = tk.Label(payout_input_frame, text="Payout per bash:", 
-                           bg="#23272e", fg="#f1f1f1", font=("Arial", 11))
-    payout_label.pack(side=tk.LEFT)
+    payout_label = tk.Label(payout_input_frame, text="⚔️ Payout per bash:", 
+                           bg="#1e2124", fg="#ffffff", font=("Segoe UI", 10))
+    payout_label.pack(anchor="w")
     
     payout_var = tk.StringVar(value="100")
-    payout_entry = tk.Entry(payout_input_frame, textvariable=payout_var, width=8, 
-                           bg="#3a3f4a", fg="#f1f1f1", relief=tk.SOLID, bd=1, 
-                           insertbackground="#f1f1f1", selectbackground="#4f8cff",
-                           font=("Arial", 11))
-    payout_entry.pack(side=tk.LEFT, padx=(8, 0))
+    payout_entry = tk.Entry(payout_input_frame, textvariable=payout_var, width=10, 
+                           bg="#40444b", fg="#ffffff", relief=tk.FLAT, bd=0,
+                           insertbackground="#ffffff", selectbackground="#5865f2",
+                           font=("Segoe UI", 11))
+    payout_entry.pack(pady=(5, 0))
     
     # Scrollable payout commands area
-    canvas_frame = tk.Frame(root, bg="#23272e")
-    canvas_frame.pack(padx=20, pady=(10, 0), fill=tk.BOTH, expand=True)
+    payout_container = tk.Frame(root, bg="#1e2124")
+    payout_container.pack(padx=25, pady=(0, 15), fill=tk.BOTH, expand=True)
     
-    canvas = tk.Canvas(canvas_frame, bg="#2c313a", highlightthickness=0, borderwidth=0)
-    scrollbar = tk.Scrollbar(canvas_frame, orient="vertical", command=canvas.yview, bg="#23272e")
+    payout_header = tk.Label(payout_container, text="💳 Payment Commands", 
+                            font=("Segoe UI", 11, "bold"), 
+                            bg="#1e2124", fg="#ffffff")
+    payout_header.pack(anchor="w", pady=(0, 8))
+    
+    canvas_frame = tk.Frame(payout_container, bg="#1e2124")
+    canvas_frame.pack(fill=tk.BOTH, expand=True)
+    
+    canvas = tk.Canvas(canvas_frame, bg="#2f3136", highlightthickness=0, 
+                      borderwidth=1, relief=tk.SOLID)
+    scrollbar = tk.Scrollbar(canvas_frame, orient="vertical", command=canvas.yview, 
+                            bg="#40444b", troughcolor="#2f3136", 
+                            activebackground="#5865f2")
     canvas.configure(yscrollcommand=scrollbar.set)
     
-    payout_frame = tk.Frame(canvas, bg="#2c313a")
+    payout_frame = tk.Frame(canvas, bg="#2f3136")
     canvas.create_window((0, 0), window=payout_frame, anchor="nw")
     
     def on_frame_configure(event):
         canvas.configure(scrollregion=canvas.bbox("all"))
     
+    def on_mousewheel(event):
+        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    
+    def bind_mousewheel_to_widget(widget):
+        """Recursively bind mouse wheel to widget and all its children."""
+        widget.bind("<MouseWheel>", on_mousewheel)
+        for child in widget.winfo_children():
+            bind_mousewheel_to_widget(child)
+    
+    def bind_mousewheel(event):
+        canvas.bind("<MouseWheel>", on_mousewheel)
+        bind_mousewheel_to_widget(payout_frame)
+    
+    def unbind_mousewheel_from_widget(widget):
+        """Recursively unbind mouse wheel from widget and all its children."""
+        widget.unbind("<MouseWheel>")
+        for child in widget.winfo_children():
+            unbind_mousewheel_from_widget(child)
+    
+    def unbind_mousewheel(event):
+        canvas.unbind("<MouseWheel>")
+        unbind_mousewheel_from_widget(payout_frame)
+    
     payout_frame.bind("<Configure>", on_frame_configure)
+    canvas.bind('<Enter>', bind_mousewheel)
+    canvas.bind('<Leave>', unbind_mousewheel)
+    
+    # Also bind to the payout_frame and its children initially
+    bind_mousewheel_to_widget(payout_frame)
     
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
     
     # Total payout display
-    total_label = tk.Label(root, text="Total Battle Payout: 0 PoE", 
-                          font=("Arial", 12, "bold"), bg="#23272e", fg="#3ecf8e")
-    total_label.pack(pady=(8, 0))
+    total_frame = tk.Frame(root, bg="#1e2124")
+    total_frame.pack(pady=15, padx=25, fill=tk.X)
+    
+    total_label = tk.Label(total_frame, text="Total Battle Payout: 0 PoE", 
+                          font=("Segoe UI", 12, "bold"), bg="#1e2124", fg="#00d4aa")
+    total_label.pack()
+    
+    # Separator line
+    separator = tk.Frame(root, height=1, bg="#40444b")
+    separator.pack(fill=tk.X, padx=25)
     
     # Footer
-    footer_frame = tk.Frame(root, bg="#23272e")
-    footer_frame.pack(side=tk.BOTTOM, pady=(0, 8), fill=tk.X)
+    footer_frame = tk.Frame(root, bg="#1e2124")
+    footer_frame.pack(side=tk.BOTTOM, pady=12, fill=tk.X)
     
     creator_label = tk.Label(footer_frame, text="Created by Swiggity", 
-                            font=("Arial", 10, "italic"), 
-                            bg="#23272e", fg="#888888")
-    creator_label.pack(side=tk.LEFT, padx=(20, 0))
+                            font=("Segoe UI", 9, "italic"), 
+                            bg="#1e2124", fg="#72767d")
+    creator_label.pack(side=tk.LEFT, padx=(25, 0))
     
     version_label = tk.Label(footer_frame, text=f"v{APP_VERSION}", 
-                            font=("Arial", 9), 
-                            bg="#23272e", fg="#666666")
-    version_label.pack(side=tk.RIGHT, padx=(0, 20))
+                            font=("Segoe UI", 9), 
+                            bg="#1e2124", fg="#72767d")
+    version_label.pack(side=tk.RIGHT, padx=(0, 25))
     
     # Auto-update handlers
     payout_var.trace_add('write', payout_update)
