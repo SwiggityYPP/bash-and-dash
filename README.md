@@ -1,8 +1,25 @@
-# Bash and Dash - Automated Release Setup
+# Bash and Dash Game Log Analyzer
 
-## 🚀 Complete Automation Setup
+## 🎮 About
 
-This setup provides **fully automated** building, versioning, and distribution of your Bash and Dash application.
+A powerful game log analyzer for counting bash attacks and calculating payouts with a modern Discord-inspired dark theme UI.
+
+**Current Version: 1.0.4**
+
+### ✨ Latest Features (v1.0.4)
+- �️ **Enhanced Mouse Wheel Scrolling** - Now works when hovering over any part of the payment commands list
+- 📏 **Larger Default Window** - Increased from 550x520 to 550x700 for better visibility
+- 🎨 **Modern Discord-Inspired UI** - Clean dark theme with improved visual hierarchy
+- ⚡ **Improved User Experience** - Better spacing, fonts, and visual elements
+- 🔧 **Bug Fixes** - Top basher payout now correctly included in total calculations
+
+### 🎯 Key Features
+- **Automatic bash attack detection** from game log files
+- **Smart payout calculations** for both per-bash and top basher bonuses
+- **One-click copy functionality** with visual feedback (strikethrough)
+- **Real-time updates** when changing payout values
+- **Auto-update system** checks for new releases on startup
+- **Scrollable payment commands** with mouse wheel support
 
 ### One-Time Setup
 
